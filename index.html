@@ -27,17 +27,26 @@
 
         <!-- قسم الرئيسية (لوحة التحكم) -->
         <div id="section-dashboard" class="space-y-6 block animate-fade">
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                <!-- بطاقة الدخل الشهري -->
                 <div class="bg-gray-800 p-6 rounded-xl shadow-lg border-r-4 border-teal-500 flex flex-col justify-center">
-                    <h3 class="text-gray-400 text-sm mb-2">إجمالي الدخل (هذا الشهر)</h3>
+                    <h3 class="text-gray-400 text-sm mb-2">الدخل (هذا الشهر)</h3>
                     <p class="text-xl font-bold text-teal-400"><span id="stat-month-syp">0</span> <span class="text-xs text-gray-400">ل.س</span></p>
                     <p class="text-xl font-bold text-green-400 mt-1"><span id="stat-month-usd">0</span> <span class="text-xs text-gray-400">$</span></p>
                 </div>
+                <!-- بطاقة الدخل اليومي -->
                 <div class="bg-gray-800 p-6 rounded-xl shadow-lg border-r-4 border-cyan-500 flex flex-col justify-center">
-                    <h3 class="text-gray-400 text-sm mb-2">إجمالي الدخل (اليوم)</h3>
+                    <h3 class="text-gray-400 text-sm mb-2">الدخل (اليوم)</h3>
                     <p class="text-xl font-bold text-cyan-400"><span id="stat-today-syp">0</span> <span class="text-xs text-gray-400">ل.س</span></p>
                     <p class="text-xl font-bold text-green-400 mt-1"><span id="stat-today-usd">0</span> <span class="text-xs text-gray-400">$</span></p>
                 </div>
+                <!-- بطاقة إجمالي الديون المستحقة -->
+                <div class="bg-gray-800 p-6 rounded-xl shadow-lg border-r-4 border-red-500 flex flex-col justify-center">
+                    <h3 class="text-gray-400 text-sm mb-2">إجمالي الديون المتراكمة</h3>
+                    <p class="text-xl font-bold text-red-400"><span id="stat-debt-syp">0</span> <span class="text-xs text-gray-400">ل.س</span></p>
+                    <p class="text-xl font-bold text-red-500 mt-1"><span id="stat-debt-usd">0</span> <span class="text-xs text-gray-400">$</span></p>
+                </div>
+                <!-- بطاقة عدد المرضى -->
                 <div class="bg-gray-800 p-6 rounded-xl shadow-lg border-r-4 border-indigo-500 flex flex-col justify-center">
                     <h3 class="text-gray-400 text-sm mb-2">مرضى اليوم</h3>
                     <p id="stat-today-patients" class="text-4xl font-bold text-indigo-400">0</p>
@@ -140,7 +149,7 @@
     <script>
         document.getElementById('visitDate').valueAsDate = new Date();
         let patients = JSON.parse(localStorage.getItem('clinicPatientsPro')) || [];
-        let editingIndex = -1; // متغير لتتبع ما إذا كنا في وضع التعديل
+        let editingIndex = -1;
 
         function saveData() {
             localStorage.setItem('clinicPatientsPro', JSON.stringify(patients));
@@ -148,11 +157,9 @@
         }
 
         function switchTab(tab) {
-            // تصفير الفورم إذا دخلنا لصفحة "زيارة جديدة" ولم نكن في وضع التعديل
             if(tab === 'add' && editingIndex === -1) {
                 resetForm();
             }
-
             ['dashboard', 'add', 'records'].forEach(t => {
                 document.getElementById('section-' + t).classList.add('hidden');
                 document.getElementById('btn-' + t).className = "flex-1 md:flex-none px-4 py-2 rounded-lg font-bold transition bg-gray-700 text-gray-400 hover:bg-gray-600";
@@ -168,10 +175,13 @@
             const today = new Date().toISOString().split('T')[0];
             const currentMonth = today.substring(0, 7);
 
-            let todaySYP = 0, todayUSD = 0, monthSYP = 0, monthUSD = 0, todayPatients = 0;
+            let todaySYP = 0, todayUSD = 0, monthSYP = 0, monthUSD = 0;
+            let debtSYP = 0, debtUSD = 0; 
+            let todayPatients = 0;
 
             patients.forEach(p => {
-                let paymentVal = parseFloat(p.payment.replace(/[^0-9.-]+/g,"")) || 0;
+                let paymentVal = parseFloat(String(p.payment).replace(/[^0-9.-]+/g,"")) || 0;
+                let debtVal = parseFloat(String(p.debt).replace(/[^0-9.-]+/g,"")) || 0;
                 let cur = p.currency || 'SYP';
                 
                 if (p.date === today) {
@@ -181,12 +191,22 @@
                 if (p.date.startsWith(currentMonth)) {
                     if(cur === 'USD') monthUSD += paymentVal; else monthSYP += paymentVal;
                 }
+                
+                // تجميع الديون
+                if(debtVal > 0) {
+                    if(cur === 'USD') debtUSD += debtVal; else debtSYP += debtVal;
+                }
             });
 
             document.getElementById('stat-today-syp').innerText = todaySYP.toLocaleString();
             document.getElementById('stat-today-usd').innerText = todayUSD.toLocaleString();
             document.getElementById('stat-month-syp').innerText = monthSYP.toLocaleString();
             document.getElementById('stat-month-usd').innerText = monthUSD.toLocaleString();
+            
+            // تحديث بطاقة الديون
+            document.getElementById('stat-debt-syp').innerText = debtSYP.toLocaleString();
+            document.getElementById('stat-debt-usd').innerText = debtUSD.toLocaleString();
+
             document.getElementById('stat-today-patients').innerText = todayPatients;
         }
 
@@ -195,7 +215,6 @@
             const tbody = document.getElementById('patientsTableBody');
             tbody.innerHTML = '';
             
-            // دمج الـ index الأصلي مع المصفوفة حتى بعد الفلترة والقلب
             let filteredPatients = patients.map((p, index) => ({ ...p, originalIndex: index }))
                                            .reverse()
                                            .filter(p => p.name.toLowerCase().includes(searchQuery));
@@ -223,7 +242,6 @@
             });
         }
 
-        // دالة التعديل
         function editPatient(index) {
             editingIndex = index;
             const p = patients[index];
@@ -243,7 +261,6 @@
             switchTab('add');
         }
 
-        // دالة الحذف
         function deletePatient(index) {
             if(confirm("هل أنت متأكد من حذف هذا السجل بشكل نهائي؟")) {
                 patients.splice(index, 1);
@@ -252,14 +269,12 @@
             }
         }
 
-        // إلغاء التعديل والعودة للوضع الطبيعي
         function cancelEdit() {
             editingIndex = -1;
             resetForm();
             switchTab('records');
         }
 
-        // تصفير الفورم
         function resetForm() {
             document.getElementById('clinicForm').reset();
             document.getElementById('visitDate').valueAsDate = new Date();
@@ -290,10 +305,8 @@
             };
             
             if (editingIndex > -1) {
-                // إذا كنا في وضع التعديل، قم بتحديث السجل الموجود
                 patients[editingIndex] = newPatientData;
             } else {
-                // إذا لم نكن في وضع التعديل، أضف سجلاً جديداً
                 patients.push(newPatientData);
             }
             
@@ -305,7 +318,6 @@
             renderTable();
         });
 
-        // دوال التصدير والاستيراد بقيت كما هي ...
         function exportToExcel() {
             if(patients.length === 0) return alert('لا يوجد بيانات لتصديرها');
             let csvContent = "\uFEFFالاسم,التاريخ,التكلفة,المدفوع,الدين,العملة,الحالة,المعالجة\n";
