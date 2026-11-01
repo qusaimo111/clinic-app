@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>سجل العيادة</title>
+    <link rel="manifest" href="manifest.json">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root { color-scheme: dark; }
+        body { font-family: 'Cairo', sans-serif; }
+    </style>
+</head>
+<body class="bg-gray-900 p-4 md:p-8 text-gray-200">
+
+    <div class="max-w-4xl mx-auto space-y-6">
+        <!-- الترويسة -->
+        <div class="bg-gray-800 p-6 rounded-xl shadow-lg border-t-4 border-cyan-500 flex justify-between items-center">
+            <h1 class="text-2xl font-bold text-cyan-400">نظام إدارة العيادة</h1>
+            <button onclick="exportToExcel()" class="bg-teal-600 hover:bg-teal-500 text-white px-4 py-2 rounded-lg text-sm font-semibold transition shadow-md">
+                تصدير (Excel)
+            </button>
+        </div>
+
+        <!-- شريط التنقل (Tabs) -->
+        <div class="flex gap-2 bg-gray-800 p-2 rounded-xl shadow-lg">
+            <button id="btn-add" onclick="switchTab('add')" class="flex-1 py-3 rounded-lg font-bold transition bg-cyan-600 text-gray-900 shadow">
+                تسجيل زيارة
+            </button>
+            <button id="btn-records" onclick="switchTab('records')" class="flex-1 py-3 rounded-lg font-bold transition bg-gray-700 text-gray-400 hover:bg-gray-600">
+                سجل المرضى
+            </button>
+        </div>
+
+        <!-- قسم إدخال مريض جديد -->
+        <div id="section-add" class="bg-gray-800 p-6 rounded-xl shadow-lg block animate-fade">
+            <form id="clinicForm" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-sm text-gray-400 mb-1">اسم المريض</label>
+                    <input type="text" id="patientName" required class="w-full bg-gray-700 border border-gray-600 text-white rounded-lg p-2 focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 focus:outline-none transition">
+                </div>
+                <div>
+                    <label class="block text-sm text-gray-400 mb-1">تاريخ الزيارة</label>
+                    <input type="date" id="visitDate" required class="w-full bg-gray-700 border border-gray-600 text-white rounded-lg p-2 focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 focus:outline-none transition">
+                </div>
+                <div>
+                    <label class="block text-sm text-gray-400 mb-1">المبلغ المدفوع</label>
+                    <input type="text" id="payment" required class="w-full bg-gray-700 border border-gray-600 text-white rounded-lg p-2 focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 focus:outline-none transition">
+                </div>
+                <div>
+                    <label class="block text-sm text-gray-400 mb-1">الحالة الطبية</label>
+                    <input type="text" id="condition" required class="w-full bg-gray-700 border border-gray-600 text-white rounded-lg p-2 focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 focus:outline-none transition">
+                </div>
+                <div class="md:col-span-2">
+                    <label class="block text-sm text-gray-400 mb-1">المعالجة / ملاحظات</label>
+                    <textarea id="treatment" rows="2" class="w-full bg-gray-700 border border-gray-600 text-white rounded-lg p-2 focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 focus:outline-none transition"></textarea>
+                </div>
+                <div class="md:col-span-2 mt-4">
+                    <button type="submit" class="w-full bg-cyan-600 hover:bg-cyan-500 text-gray-900 font-bold py-3 rounded-lg transition shadow-lg text-lg">
+                        حفظ السجل
+                    </button>
+                </div>
+            </form>
+        </div>
+
+        <!-- قسم جدول السجلات -->
+        <div id="section-records" class="bg-gray-800 p-6 rounded-xl shadow-lg hidden animate-fade overflow-x-auto">
+            <table class="w-full text-right whitespace-nowrap">
+                <thead>
+                    <tr class="bg-gray-700 text-gray-300 text-sm">
+                        <th class="p-3 rounded-tr-lg">الاسم</th>
+                        <th class="p-3">التاريخ</th>
+                        <th class="p-3">الدفعة</th>
+                        <th class="p-3">الحالة</th>
+                        <th class="p-3 rounded-tl-lg">المعالجة</th>
+                    </tr>
+                </thead>
+                <tbody id="patientsTableBody" class="divide-y divide-gray-700">
+                    <!-- سيتم حقن البيانات هنا -->
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <script>
+        document.getElementById('visitDate').valueAsDate = new Date();
+        let patients = JSON.parse(localStorage.getItem('clinicPatients')) || [];
+
+        // دالة التبديل بين الشاشات
+        function switchTab(tab) {
+            const addSection = document.getElementById('section-add');
+            const recordsSection = document.getElementById('section-records');
+            const btnAdd = document.getElementById('btn-add');
+            const btnRecords = document.getElementById('btn-records');
+
+            if (tab === 'add') {
+                addSection.classList.remove('hidden');
+                recordsSection.classList.add('hidden');
+                btnAdd.className = "flex-1 py-3 rounded-lg font-bold transition bg-cyan-600 text-gray-900 shadow";
+                btnRecords.className = "flex-1 py-3 rounded-lg font-bold transition bg-gray-700 text-gray-400 hover:bg-gray-600";
+            } else {
+                addSection.classList.add('hidden');
+                recordsSection.classList.remove('hidden');
+                btnRecords.className = "flex-1 py-3 rounded-lg font-bold transition bg-cyan-600 text-gray-900 shadow";
+                btnAdd.className = "flex-1 py-3 rounded-lg font-bold transition bg-gray-700 text-gray-400 hover:bg-gray-600";
+            }
+        }
+
+        function renderTable() {
+            const tbody = document.getElementById('patientsTableBody');
+            tbody.innerHTML = '';
+            [...patients].reverse().forEach(patient => {
+                tbody.innerHTML += `
+                    <tr class="hover:bg-gray-700 text-sm text-gray-200 transition">
+                        <td class="p-3 font-semibold text-cyan-50">${patient.name}</td>
+                        <td class="p-3 text-gray-400">${patient.date}</td>
+                        <td class="p-3 text-cyan-400 font-bold">${patient.payment}</td>
+                        <td class="p-3">${patient.condition}</td>
+                        <td class="p-3 truncate max-w-xs text-gray-400" title="${patient.treatment}">${patient.treatment}</td>
+                    </tr>
+                `;
+            });
+        }
+
+        document.getElementById('clinicForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            const newPatient = {
+                name: document.getElementById('patientName').value,
+                date: document.getElementById('visitDate').value,
+                payment: document.getElementById('payment').value,
+                condition: document.getElementById('condition').value,
+                treatment: document.getElementById('treatment').value
+            };
+            
+            patients.push(newPatient);
+            localStorage.setItem('clinicPatients', JSON.stringify(patients));
+            
+            this.reset();
+            document.getElementById('visitDate').valueAsDate = new Date();
+            renderTable();
+            
+            // الانتقال التلقائي لجدول السجلات بعد الحفظ
+            switchTab('records');
+        });
+
+        function exportToExcel() {
+            if(patients.length === 0) return alert('لا يوجد بيانات لتصديرها');
+            
+            let csvContent = "\uFEFFاسم المريض,تاريخ الزيارة,المبلغ المدفوع,الحالة الطبية,المعالجة\n";
+            patients.forEach(row => {
+                let treatment = row.treatment.replace(/,/g, ' - ').replace(/\n/g, ' ');
+                let condition = row.condition.replace(/,/g, ' - ');
+                csvContent += `${row.name},${row.date},${row.payment},${condition},${treatment}\n`;
+            });
+
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement("a");
+            const url = URL.createObjectURL(blob);
+            link.setAttribute("href", url);
+            link.setAttribute("download", `سجلات_العيادة_${new Date().toISOString().split('T')[0]}.csv`);
+            link.style.visibility = 'hidden';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('sw.js')
+            .catch(err => console.log('Service Worker Failed', err));
+        }
+
+        renderTable();
+    </script>
+</body>
+</html>
