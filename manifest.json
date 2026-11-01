@@ -1,16 +1,16 @@
 {
-    "name": "عيادة الدكتورة",
-    "short_name": "العيادة",
-    "start_url": "./index.html",
-    "display": "standalone",
-    "background_color": "#eff6ff",
-    "theme_color": "#2563eb",
-    "orientation": "portrait-primary",
-    "icons": [
-      {
-        "src": "https://cdn-icons-png.flaticon.com/512/2966/2966327.png",
-        "sizes": "512x512",
-        "type": "image/png"
-      }
-    ]
-  }
+  "name": "عيادة الجلدية",
+  "short_name": "عيادة S",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#0f172a",
+  "theme_color": "#06b6d4",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "logo.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
