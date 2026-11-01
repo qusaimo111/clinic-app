@@ -1,4 +1,4 @@
-const CACHE_NAME = 'clinic-app-v8'; // كل ما تعدل التطبيق، ارفع هذا الرقم
+const CACHE_NAME = 'clinic-app-v9'; // كل ما تعدل التطبيق، ارفع هذا الرقم
 const ASSETS = [
     './',
     './index.html',
