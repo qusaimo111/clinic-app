@@ -339,12 +339,26 @@
             const file = event.target.files[0];
             if (!file) return;
             const reader = new FileReader();
+            
             reader.onload = function(e) {
-                const lines = e.target.result.split('\n');
+                // تنظيف فواصل الأسطر المخفية التي يضيفها الويندوز والإكسل
+                const text = e.target.result.replace(/\r/g, '');
+                const lines = text.split('\n');
                 let importedCount = 0;
+
+                if(lines.length < 2) {
+                    alert('الملف فارغ أو صيغته غير صحيحة.');
+                    return;
+                }
+
+                // اكتشاف الفاصل تلقائياً: هل استخدم الإكسل فاصلة منقوطة أم عادية؟
+                const delimiter = lines[0].includes(';') ? ';' : ',';
+
                 for(let i = 1; i < lines.length; i++) {
                     if(!lines[i].trim()) continue;
-                    const cols = lines[i].split(',');
+                    
+                    const cols = lines[i].split(delimiter);
+                    
                     if(cols.length >= 8) {
                         patients.push({ name: cols[0], date: cols[1], totalCost: cols[2], payment: cols[3], debt: cols[4], currency: cols[5], condition: cols[6], treatment: cols[7] });
                         importedCount++;
@@ -353,10 +367,20 @@
                         importedCount++;
                     }
                 }
-                if(importedCount > 0) { saveData(); alert(`تم استيراد ${importedCount} سجل بنجاح!`); switchTab('records'); }
+                
+                if(importedCount > 0) { 
+                    saveData(); 
+                    alert(`تم استيراد ${importedCount} سجل بنجاح!`); 
+                    switchTab('records'); 
+                    renderTable();
+                } else {
+                    alert('لم يتم استيراد أي بيانات. تأكد من عدم العبث بعناوين الأعمدة في الإكسل.');
+                }
                 event.target.value = ''; 
             };
-            reader.readAsText(file);
+            
+            // قراءة الملف بتشفير UTF-8 لضمان عدم ظهور الأحرف العربية كرموز غريبة
+            reader.readAsText(file, 'UTF-8');
         }
 
         if ('serviceWorker' in navigator) { navigator.serviceWorker.register('sw.js').catch(err => console.log('SW Failed', err)); }
