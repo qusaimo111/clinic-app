@@ -1,14 +1,14 @@
-const CACHE_NAME = 'clinic-app-v9'; // كل ما تعدل التطبيق، ارفع هذا الرقم
+const CACHE_NAME = 'clinic-app-v10';
 const ASSETS = [
     './',
     './index.html',
     './manifest.json',
-    './logo.png' // تأكد من اسم صورة الشعار عندك
+    './logo.png'
 ];
 
-// 1. التثبيت وتخطي الانتظار
+// 1. التثبيت
 self.addEventListener('install', event => {
-    self.skipWaiting(); // أمر إجباري لتخطي مرحلة الانتظار واستلام التحديث فوراً
+    self.skipWaiting();
     event.waitUntil(
         caches.open(CACHE_NAME).then(cache => {
             return cache.addAll(ASSETS);
@@ -22,21 +22,45 @@ self.addEventListener('activate', event => {
         caches.keys().then(keys => {
             return Promise.all(
                 keys.map(key => {
-                    // إذا كان اسم الكاش لا يطابق الإصدار الحالي، احذفه
                     if (key !== CACHE_NAME) {
                         return caches.delete(key);
                     }
                 })
             );
-        }).then(() => self.clients.claim()) // أمر إجباري للسيطرة على كل الصفحات المفتوحة فوراً
+        }).then(() => self.clients.claim())
     );
 });
 
-// 3. جلب البيانات (العمل أوفلاين)
+// 3. جلب البيانات (الذكاء هنا: Cache First, then Network Dynamic Caching)
 self.addEventListener('fetch', event => {
     event.respondWith(
-        caches.match(event.request).then(response => {
-            return response || fetch(event.request);
+        caches.match(event.request).then(cachedResponse => {
+            // إذا الملف موجود بالكاش (مثل تيلويند والخطوط)، اعرضه فوراً
+            if (cachedResponse) {
+                return cachedResponse;
+            }
+            
+            // إذا مو موجود، جيبه من النت، واحفظ نسخة منه بالكاش للمرات الجاية
+            return fetch(event.request).then(networkResponse => {
+                // التأكد من أن الاستجابة صحيحة قبل تخزينها
+                if (!networkResponse || networkResponse.status !== 200 || networkResponse.type === 'error') {
+                    return networkResponse;
+                }
+                
+                // نأخذ نسخة من الملف لأن الاستجابة تُقرأ مرة واحدة فقط
+                const responseToCache = networkResponse.clone();
+                
+                caches.open(CACHE_NAME).then(cache => {
+                    // استثناء طلبات إضافات المتصفح من التخزين لتجنب الأخطاء
+                    if (event.request.url.startsWith('http')) {
+                        cache.put(event.request, responseToCache);
+                    }
+                });
+                
+                return networkResponse;
+            }).catch(() => {
+                console.log('أنت أوفلاين والملف غير موجود بالكاش:', event.request.url);
+            });
         })
     );
 });
